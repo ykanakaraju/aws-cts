@@ -1,0 +1,60 @@
+{
+  "Comment" : "State Machine Example",
+  "StartAt" : "WriteData",
+  "States" : {
+	"WriteData" : {
+		"Type" : "Choice",
+		"Choices" : [
+			{ 
+				"Variable" : "$.destination",
+				"StringEquals" : "s3",
+				"Next" : "WriteToS3"
+			},
+			{ 
+				"Variable" : "$.destination",
+				"StringEquals" : "dynamodb",
+				"Next" : "WriteToDynamoDB"
+			}
+		]
+    },
+	"WriteToS3" : {
+		"Type" : "Task",
+		"Resource" : "arn:aws:lambda:us-east-1:157549686651:function:py-stepfn-write-to-s3",
+		"Next": "Pass to Wait"
+	},
+	"Pass to Wait": {
+      "Type": "Pass",
+      "Next": "Wait sometime"
+    },
+	"Wait sometime": {
+      "Comment": "A Wait state delays the state machine from continuing for a specified time.",
+      "Type": "Wait",
+      "Seconds": 10,
+      "Next": "DDB or Error"
+    },
+	"DDB or Error" : {
+		"Type" : "Choice",
+		"Choices" : [
+			{ 
+				"Variable" : "$.destination",
+				"StringEquals" : "dynamodb",
+				"Next" : "WriteToDynamoDB"
+			},
+			{ 
+				"Variable" : "$.destination",
+				"StringEquals" : "error",
+				"Next" : "Fail the task"
+			}
+		]
+    },
+	"Fail the task": {
+      "Type": "Fail",
+      "Cause": "Got error from WriteToS3 task"
+    },
+	"WriteToDynamoDB" : {
+		"Type" : "Task",
+		"Resource" : "arn:aws:lambda:us-east-1:157549686651:function:py-stepfn-write-to-ddb",
+		"End": true
+	}        
+  }
+}

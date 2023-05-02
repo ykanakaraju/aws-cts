@@ -1,0 +1,68 @@
+
+  Lab 1 - Using Step Functions to write to S3 or DynamoDB
+  --------------------------------------------------------
+
+	1. Create three S3 buckets
+	
+			iquiz.stepfn.ddb.input	  	(ddb input bucket)
+			iquiz.stepfn.s3.input		(s3 input bucket)	
+			iquiz.stepfn.s3.output		(s3 output bucket)
+			
+	2. Create a DynamoDB table as follows:
+	
+			Table Name: step_fn_demo_table
+			Partition key: row_id   
+					 Type: String		
+
+	3. Create two Lambda functions. These functions are called from within the state machine.
+		
+		Lambda 1: cts-stepfn-write-to-s3.py
+		Lambda 2: cts-stepfn-write-to-ddb.py
+		
+		Role to be attached: CTSLambdaDemoRole
+		Policies: AmazonS3FullAccess, AmazonDynamoDBFullAccess, CloudWatchFullAccess, AWSStepFunctionsFullAccess
+	
+	4. Copy the ARNs of both of the above Lambda functions and save them. 
+	   We need them in the state machine JSON code. 	
+   
+		arn:aws:lambda:us-east-1:XXXXXX:function:cts-stepfn-write-to-s3
+		arn:aws:lambda:us-east-1:XXXXXX:function:cts-stepfn-write-to-ddb
+	
+	5. Create an IAM role for 'Step Functions' with 'AWSLambdaRole'
+		Note: This role is automatically added. 
+	
+	6. Create a State machine
+		
+	   6.1 Open "Step Functions" AWS Console and select 'State machines' menu option.
+		   Click on 'Create state machine' button
+	   6.2 Define state machine: 'Write your workflow in code' 
+		   Type: 'Standard'
+	   6.3 Definition:  Add the JSON code for the state-machine.
+			-> Refer to "sm-s3-ddb.json" script. 
+			-> Make sure you add the correct ARNs corresponding to your lambda functions. 
+	   6.4 Click 'Next; button
+	   6.5 State machine name: "S3AndDDBStateMachine"
+		   Permissions:
+				Execution Role: Choose an existing role
+				Select the role you created in step 3
+		6.6 Click on 'Create state machine' button.
+	
+	7. Create a Lambda function to invoke the above Step function
+
+			Lambda 3: cts-stepfn-invoke-s3-ddb.py
+			
+			** NOTE: Make sure to use the correct ARN of your state-machine in the above script.
+					 Make sure to use the correct s3 input buket name in the above script.
+		
+	8. Add triggers to the above lambda. 
+
+			Triggers:   
+				iquiz.stepfn.s3.input
+				iquiz.stepfn.ddb.input
+				
+	9. Now copy users*.csv files to the above two buckets. 
+
+			Based on what bucket you copied the file to, the state machine writes the data to 
+			DynamoDB only or copies the bucket to another bucket and then writes the data to DynamoDB.
+	
+	

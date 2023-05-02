@@ -1,0 +1,189 @@
+
+  Lab 1: Amazon MSK Basic Operations Demo
+  =========================================
+  
+  
+  Step 1:  Setup network infrastructure for our MSK cluster
+  ---------------------------------------------------------  
+	1. Create a VPC with the following configurations
+	
+		1.1 Go to VPC Management console and click on 'Create VPC' option
+		1.2 Provide the following configurations:
+			Resources to create: VPC only
+			Name tag: MSK-VPC  
+			IPv4 CIDR: 10.0.0.0/16		
+			** This allows our VPC to have a host address range from 10.0.0.1 to 10.0.255.254
+		1.3	Click on 'Create VPC'.
+		
+	2. Create two public subnets in two different AZs
+	
+		2.1 Select 'Subnets' meu option and click on 'Create subnet' button
+		2.2 Enter the following details:
+			VPC ID: vpc-xxxxx (MSK-VPC)
+			Subnet name: MSK-Public-Subnet-1A
+			Availability Zone: us-east-1a
+			IPv4 CIDR block: 10.0.0.0/24
+		2.3 Click on 'Create subnet' button to create the subnet.
+		2.4 Similarly, create another subnet with the following details:
+			VPC ID: vpc-xxxxx (MSK-VPC)
+			Subnet name: MSK-Public-Subnet-1B
+			Availability Zone: us-east-1b
+			IPv4 CIDR block: 10.0.1.0/24
+			
+	3. Check the Route-table configurations (nothing to do here, just understand)
+		3.1 Click on 'Route tables' menu option
+		3.2 Click on the route table that is associated with your VPC
+		3.3 Click on subnet associations tab. 
+			Here you find both your subnets have not been explicitly associated with any route 
+			tables and are therefore associated with the main route table.
+			
+	4. Create an Internet gateway (IGW) and connect it to our VPC.
+		4.1 Click on 'Internet gateways' menu option. 
+		4.2 Click on 'Create internet gateway' button
+		4.3 Create with the following:
+			Name tag: MSK-IGW
+		4.4 Select the IGW and click on 'Actions' and select 'Attach to VPC'
+		4.5 Select the VPC you created earlier and attach.
+		
+	5. Add a route in the route table to associate all internet traffic to the IGW.
+		5.1 Click on the 'Route table' you created earlier (from route tables list)
+		5.2 Click on 'Edit routes' button
+		5.3 Add the following:
+				Destinations: 0.0.0.0/0
+				Target: Internet gateway -> select your IGW
+		5.4 Click on 'Save changes' button
+		
+  Step 2:  Create and configure MSK cluster
+  ------------------------------------------  
+	6. Create MSK cluster
+		6.1	Open Amazon MSK console and click on 'Create cluster' button
+		6.2	Create with the following details:
+		
+			Creation method
+				Cluster creation method : Custom create
+			Cluster name
+				Cluster name: MSK-Cluster
+			Cluster type
+				Cluster type: provisioned
+			Apache Kafka version
+				Apache Kafka version: 2.8.1 (latest as on the date of this writing)
+			Brokers
+				Broker type: kafka.t3.small
+				Number of zones: 2
+			Storage
+				Amazon EBS Storage per broker: 1 GiB
+				
+			=> Next
+			
+			Networking
+				VPC : vpc-xxxx (MSK-VPC)
+				First zone: us-east-1a
+				Subnet: select your subnet created in that zone
+				First zone: us-east-1b
+				Subnet: select your subnet created in that zone
+				
+			=> Next
+			
+			Security settings
+				Unauthenticated access: check  
+				IAM role-based authentication: uncheck
+				
+			Encryption
+				TLS encryption: uncheck
+				Plaintext: check
+				
+			=> Next
+			=> Next
+			
+		6.3 review and click on 'Create cluster' button
+		
+		**** Creating an MSK cluster may take 20 to 25 minutes ****
+		
+
+  Step 3:  Create an EC2 instance to launch the Kafka clients (producers & consumers)
+  -----------------------------------------------------------------------------------  
+	7. Open EC2 management console and lauch an instance with the following values:
+			
+			Name: MSK-Client-EC2
+			Amazon Machine Image (AMI): Amazon Linux 2 AMI (HVM) ...
+			Key-Pair: Create a new key pair and save the .ppk file to connect using PuTTY
+					  (Name: MSK-KeyPair-1)
+			Network Settings -> Click on 'Edit' button	
+				VPC: vpc-xxxx (MSK-VPC)
+				Security group: leave default
+				Auto-assign public IP: Enable
+				Security group name: leave default  (make a note of it)
+				
+			Click on 'Launch instance' button
+			
+	Step 4: Setup two-way communication between our MSK cluster and client EC2 instance
+	------------------------------------------------------------------------------------
+	8. Make a note of the security groups of your MSK cluster and also that of your EC2 instance
+		8.1 Wait unitl the MSK cluster is active.
+		8.2 Once active, open the cluster details page and make a note of the following details:
+			Security group (of MSK cluster): sg-067bd716fe245def9  (available in Properties -> Network settings section)
+		8.3. Open you EC2 instance details page and make a note of its security group as well
+			Security group (of EC2 instance): sg-07e44440a09772312
+	   
+	9. Add a security rule to allow traffic from MSK cluster to the EC2 instance.
+		9.1	Go to list of instances and click on your EC2 instance-id open open the details page
+		9.2 Click on the 'Security' tab
+		9.3 Click on the security group link and click on 'Edit inbound rules' button
+		9.4 Add a new rule as follows:
+				Type: All traffic;  Source: <MSK cluster's security group> (such as sg-067bd716fe245def9)
+		9.5 Click on 'Save rules' button
+		
+	10. Add a security rule to allow traffic from EC2 instance to the MSK cluster .
+		10.1 Open the surity group of your MSK cluster from cluster details page
+		10.2 9.4 Add a new rule as follows:
+				Type: All traffic;  Source: <EC2 instance's security group> (such as sg-07e44440a09772312)
+		9.5 Click on 'Save rules' button
+		
+	
+	Step 5: Setup your EC2 client instance and start communicating with Kafka
+	--------------------------------------------------------------------------
+	
+	11. Open an SSH terminal to your EC2 instance using PuTTY
+		Run the following command to install the necessary components
+		
+		11.1 install Java 1.8		
+			sudo yum install java-1.8.0-openjdk
+			
+		11.2  Download and extract Kafka (make sure you are using correct version)
+		
+			wget https://archive.apache.org/dist/kafka/2.8.1/kafka_2.12-2.8.1.tgz
+			tar -xvf kafka_2.12-2.8.1.tgz
+			cd kafka_2.12-2.8.1
+			
+		11.3 Make a note of the bootstrap servers
+			
+			Open MSK cluster details page and click on 'View client information' button
+			Here you can find the 'Private end point' for palin text.
+			Make a note of these two URLs
+			
+		11.4 Go back to SSH terminal and create a topic. 
+			 Run the following command
+			 
+				bin/kafka-topics.sh --create --topic DemoTopic1 --bootstrap-server {BOOTSTRAP-SERVER-URLs}  --replication-factor 1 --partitions 1
+				
+		11.4 Launch a Kafka console producer and send messages.
+			 Run the following command
+			 
+				bin/kafka-topics.sh --create --topic DemoTopic1 --bootstrap-server {BOOTSTRAP-SERVER-URLs}  --replication-factor 1 --partitions 1
+				
+		11.5 Lauch a duplicate SSH terminal and run the following commands:
+		
+				cd kafka_2.12-2.8.1
+				bin/kafka-console-consumer.sh --topic DemoTopic1 --bootstrap-server {BOOTSTRAP-SERVER-URLs} 
+				
+		=> As you produce messages from one terminal, thse messages are consumed by the consumer
+			
+			
+
+		
+
+
+	
+
+
+ 

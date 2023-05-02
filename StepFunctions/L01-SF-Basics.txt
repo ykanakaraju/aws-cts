@@ -1,0 +1,52 @@
+
+  Lab 1 - Demo of Step Functions basic functionality
+  ---------------------------------------------------
+
+	1. 	Create two Lambda functions. 
+		These functions are invoked from within the state machine.
+	
+			Lambda 1: cts-stepfn-1.py
+			Lambda 2: cts-stepfn-2.py
+			
+			Role to be attached: CTSLambdaDemoRole
+			Policies: AmazonS3FullAccess, AmazonDynamoDBFullAccess, CloudWatchFullAccess, AWSStepFunctionsFullAccess
+			
+			*** Note: We are going to use this role in the next lab.
+	
+	2. 	Copy the ARNs of both of the above Lambda function and save them. 
+		We need them in the state machine JSON code. 	
+   
+			arn:aws:lambda:us-east-1:XXXXX:function:cts-stepfn-1
+			arn:aws:lambda:us-east-1:XXXXX:function:cts-stepfn-2
+	
+	3. 	Create an IAM role for 'Step Functions' with 'AWSLambdaRole'
+		Note: This role is automatically added. 
+	
+	4. Create a State machine	
+	   4.1 Open "Step Functions" AWS Console and select 'State machines' menu option. 
+		   Click on 'Create state machine' button
+	   4.2 Define state machine: 'Write your workflow in code' 
+		   Type: 'Standard'
+	   4.3 Definition:  Add the JSON code for the state-machine.
+			-> Refer to "sm-sf-basic.json" script. 
+			-> Make sure you add the correct ARNs corresponding to your lambda functions. 
+	   4.4 Click 'Next; button
+	   4.5 State machine name: "SM-Basic"
+		   Permissions:
+				Execution Role: Choose an existing role
+				Select the role you created in step 3
+		4.6 Click on 'Create state machine' button.
+	
+	5. Execute the state machine
+		
+		5.1 Click on 'Start execution' button (top menu)	
+		5.2 Provide the following input in the Input box (JSON code)
+	
+{  
+    "destination" : "s3"
+}
+
+		5.3 Observe the state machine being execute. 
+			You can select a node and examine the input and output.
+	
+	
